@@ -50,16 +50,16 @@ def main():
 
     if args.j is None:
         args.j = max(min(mp.cpu_count(), 24), 1)
-        print("Running with {} cores.".format(args.j))
+        print(f"Running with {args.j} cores.")
 
     if args.slice > args.num_slices:
-        print("Slice {} is larger than the number of slices ({}).".format(args.slice,
-              args.num_slices))
+        print(
+            f"Slice {args.slice} is larger than the number of slices ({args.num_slices})."
+        )
         return 1
 
     if args.num_slices > 0 and args.slice < 1:
-        print("Invalid slice {} (must be between 1 and {}).".format(args.num_slices,
-              args.slice))
+        print(f"Invalid slice {args.num_slices} (must be between 1 and {args.slice}).")
         return 1
 
     files = []
@@ -106,14 +106,14 @@ class Runner(object):
         more_includes = os.path.join(self.args_.corpus, 'corpus_include.list')
         if os.path.exists(more_includes):
             with open(more_includes, 'rt') as fp:
-                for line in fp.readlines():
+                for line in fp:
                     include = os.path.join(self.args_.corpus, line.strip())
                     self.includes_.append(include)
 
         self.skip_file_path_ = os.path.join(self.args_.corpus, 'corpus_skip.list')
         if os.path.exists(self.skip_file_path_) and not self.args_.retry_bad:
             with open(self.skip_file_path_, 'rt') as fp:
-                for line in fp.readlines():
+                for line in fp:
                     self.skip_set_.add(line.strip())
 
         self.files_ = [os.path.relpath(file, self.args_.corpus) for file in self.files_]
@@ -133,13 +133,13 @@ class Runner(object):
 
         missing = sorted(self.missing_includes_.items(), key=lambda item: item[1])
         for include, encounters in missing:
-            print("Missing include {} used {} times.".format(include, encounters))
+            print(f"Missing include {include} used {encounters} times.")
 
         # Re-sort the skip list.
         if os.path.exists(self.skip_file_path_):
             skip_set = set()
             with open(self.skip_file_path_, 'rt') as fp:
-                for line in fp.readlines():
+                for line in fp:
                     skip_set.add(line.strip())
 
             with open(self.skip_file_path_, 'wt') as fp:
@@ -161,7 +161,7 @@ class Runner(object):
         for file in self.files_:
             self.work_.put(file)
 
-        for i in range(self.args_.j):
+        for _ in range(self.args_.j):
             thread = threading.Thread(None, self.consumer)
             self.threads_.append(thread)
             thread.start()
@@ -259,9 +259,9 @@ class Runner(object):
         remove = False
         if not ok:
             if output == "timed out":
-                self.log_.write("timed out: " + path + "\n")
+                self.log_.write(f"timed out: {path}" + "\n")
             else:
-                self.log_.write("failed: " + path + "\n")
+                self.log_.write(f"failed: {path}" + "\n")
             self.log_.write("    " + ' '.join(argv) + "\n")
             if output:
                 self.log_.write(output)
@@ -279,20 +279,19 @@ class Runner(object):
 
             m = re.search("cannot read from file: \"(.+)\"", output)
             if m is not None:
-                include = m.group(1)
+                include = m[1]
                 self.missing_includes_[include] = self.missing_includes_.get(include, 0) + 1
-        else:
-            if self.args_.remove_good:
-                self.log_.write("rm \"{}\"".format(path) + "\n")
-                if self.args_.commit:
-                    remove = True
+        elif self.args_.remove_good:
+            self.log_.write(f'rm \"{path}\"' + "\n")
+            if self.args_.commit:
+                remove = True
 
         if remove:
             with open(self.skip_file_path_, 'at') as fp:
                 fp.write(path + "\n")
 
 def diagnose_error(path, output):
-    print("Error compiling {}:".format(path))
+    print(f"Error compiling {path}:")
     print("")
 
     lines = [line.strip() for line in output.split('\n')]
@@ -302,14 +301,14 @@ def diagnose_error(path, output):
             continue
 
         message = line[m.start():]
-        print("  " + message)
+        print(f"  {message}")
         print("")
 
-        diag = extract_line(path, int(m.group(1)))
+        diag = extract_line(path, int(m[1]))
         if diag is None:
             print("   >> Unknown line <<")
         else:
-            print("  " + diag.strip())
+            print(f"  {diag.strip()}")
         print("")
 
     while True:
@@ -317,9 +316,9 @@ def diagnose_error(path, output):
         progressbar.streams.flush()
         line = sys.stdin.readline()
         line = line.strip()
-        if line == 'D' or line == 'd':
+        if line in ['D', 'd']:
             return True
-        elif line == 'S' or line == 's':
+        elif line in ['S', 's']:
             return False
 
 def extract_line(path, number):
@@ -327,9 +326,7 @@ def extract_line(path, number):
         data = fp.read()
     text = data.decode('utf8', 'ignore')
     lines = text.split('\n')
-    if number - 1 >= len(lines):
-        return None
-    return lines[number - 1]
+    return None if number - 1 >= len(lines) else lines[number - 1]
 
 def get_all_files(path, exts, out):
     corpus_list = os.path.join(path, 'corpus.list')
@@ -348,7 +345,7 @@ def get_all_files(path, exts, out):
 
 def import_corpus_list(root, list_file, out):
     with open(list_file, 'rt') as fp:
-        for line in fp.readlines():
+        for line in fp:
             out.append(os.path.join(root, line.strip()))
 
 if __name__ == '__main__':

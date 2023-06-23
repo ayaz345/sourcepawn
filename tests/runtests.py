@@ -77,16 +77,16 @@ class TestPlan(object):
   def match_arch(self, arch):
     if self.args.arch is None:
       return True
-    if self.args.arch == 'x64' or self.args.arch == 'x86_64':
+    if self.args.arch in ['x64', 'x86_64']:
       return arch == 'x86_64'
     return self.args.arch == arch
 
   def find_executable(self, path):
     if os.path.exists(path):
       pass
-    elif os.path.exists(path + '.js'):
+    elif os.path.exists(f'{path}.js'):
       path += '.js'
-    elif os.path.exists(path + '.exe'):
+    elif os.path.exists(f'{path}.exe'):
       path += '.exe'
     else:
       return None
@@ -111,10 +111,8 @@ class TestPlan(object):
         continue
 
       prefix = os.path.join(path, subdir, name)
-      full_path = self.find_executable(prefix)
-      if not full_path:
-        continue
-      found.append((parts[1], os.path.abspath(full_path)))
+      if full_path := self.find_executable(prefix):
+        found.append((parts[1], os.path.abspath(full_path)))
     return found
 
   def find_shells(self):
@@ -130,17 +128,17 @@ class TestPlan(object):
       rc, stdout, stderr = testutil.exec_argv([path, '--version'])
       if rc == 0 and 'JIT' in stdout:
         self.shells.append({
-          'path': path,
-          'args': [],
-          'name': 'default-' + arch,
-          'env': env,
-          })
+            'path': path,
+            'args': [],
+            'name': f'default-{arch}',
+            'env': env
+        })
 
       self.shells.append({
-        'path': path,
-        'args': ['--disable-jit'],
-        'name': 'interpreter-' + arch,
-        'env': env,
+          'path': path,
+          'args': ['--disable-jit'],
+          'name': f'interpreter-{arch}',
+          'env': env,
       })
 
   def find_compilers(self):
@@ -194,10 +192,11 @@ class TestPlan(object):
       if not self.match_arch(arch):
         continue
 
-      path = os.path.join(self.args.objdir, 'exp', 'compiler', 'spcomp2' + arch, 'spcomp2')
+      path = os.path.join(self.args.objdir, 'exp', 'compiler', f'spcomp2{arch}',
+                          'spcomp2')
 
       if not os.path.exists(path):
-        if not os.path.exists(path + '.js'):
+        if not os.path.exists(f'{path}.js'):
           continue
         path += '.js'
 
@@ -276,20 +275,20 @@ class Test(object):
 
     smx_path = os.path.basename(self.path)
     smx_base_path, ext = os.path.splitext(smx_path)
-    if ext == '.sp':
-      self.smx_path = smx_base_path + '.smx'
-    elif ext == '.smx':
+    if ext == '.smx':
       self.smx_path = self.path
+    elif ext == '.sp':
+      self.smx_path = f'{smx_base_path}.smx'
     else:
       self.smx_path += '.smx'
 
     base_path, _ = os.path.splitext(self.path)
-    if os.path.exists(base_path + '.out'):
-      self.stdout_file = base_path + '.out'
-    if os.path.exists(base_path + '.err'):
-      self.stderr_file = base_path + '.err'
-    if os.path.exists(base_path + '.txt'):
-      self.txtout_file = base_path + '.txt'
+    if os.path.exists(f'{base_path}.out'):
+      self.stdout_file = f'{base_path}.out'
+    if os.path.exists(f'{base_path}.err'):
+      self.stderr_file = f'{base_path}.err'
+    if os.path.exists(f'{base_path}.txt'):
+      self.txtout_file = f'{base_path}.txt'
 
   def get_expected_output(self, pipe_name):
     if pipe_name == 'stdout':
@@ -346,9 +345,7 @@ class Test(object):
     compiler = self.local_manifest_.get('compiler', None)
     if compiler is None:
       compiler = manifest_get(self.manifest_, self.name, 'compiler')
-    if compiler is None:
-      return True
-    return mode['spcomp']['name'] == compiler
+    return True if compiler is None else mode['spcomp']['name'] == compiler
 
   def read_local_manifest(self):
     self.local_manifest_ = {}
@@ -369,8 +366,8 @@ class Test(object):
     if m is None:
       return False
 
-    key = m.group(1)
-    value = m.group(2).strip()
+    key = m[1]
+    value = m[2].strip()
     if key not in Test.ManifestKeys:
       raise Exception("Test {0} contains unsupported manifest key {1}".format(
         self.name, key))
@@ -408,7 +405,7 @@ class TestRunner(object):
       self.print_failures()
       return False
 
-    self.out("Done. {} tests passed.".format(self.total_tests_))
+    self.out(f"Done. {self.total_tests_} tests passed.")
     return True
 
   def run_impl(self):
@@ -436,7 +433,7 @@ class TestRunner(object):
   def should_compile_only(self, test):
     if test.path.endswith('.smx'):
       return False
-    if test.type == 'compiler-output' or test.type == 'compile-only':
+    if test.type in ['compiler-output', 'compile-only']:
       return True
     return self.plan.args.compile_only
 
@@ -503,10 +500,7 @@ class TestRunner(object):
     return self.do_exec(argv, env = mode['spcomp']['env'])
 
   def run_shells(self, mode, test):
-    for shell in self.plan.shells:
-      if not self.run_shell(mode, shell, test):
-        return False
-    return True
+    return all(self.run_shell(mode, shell, test) for shell in self.plan.shells)
 
   def run_shell(self, mode, shell, test):
     self.out("Running with shell ({0})".format(shell['name']))
@@ -536,7 +530,7 @@ class TestRunner(object):
 
     assert test.type == 'compiler-output'
     test_prefix = test.name.split('-')[0]
-    if test_prefix == 'ok' or test_prefix == 'warn':
+    if test_prefix in ['ok', 'warn']:
       if rc != 0:
         self.out("FAIL: Compile failed, return code {0} (expected 0).".format(rc))
         return False
@@ -560,11 +554,7 @@ class TestRunner(object):
     if self.plan.show_cli:
       self.out(' '.join(argv))
 
-    if argv[0].endswith('.js'):
-      timeout = 60
-    else:
-      timeout = 5
-
+    timeout = 60 if argv[0].endswith('.js') else 5
     return testutil.exec_argv(argv, timeout, logger = self, env = env)
 
   def compare_output(self, test, pipe_name, actual):
@@ -612,9 +602,7 @@ class TestRunner(object):
   def compare_spcomp_output(self, test, actual_stdout):
     expected_lines = []
     with open(test.txtout_file, 'r') as fp:
-      for line in fp:
-        expected_lines.append(line.strip())
-
+      expected_lines.extend(line.strip() for line in fp)
     for expected_line in expected_lines:
       if expected_line not in actual_stdout:
         self.out("FAIL: Expected to find the following line in stdout:")
@@ -624,11 +612,12 @@ class TestRunner(object):
 
   def fix_path(self, binary, path):
     if os.path.isabs(path) and binary.endswith('.js'):
-      return '/fakeroot' + path
+      return f'/fakeroot{path}'
     return path
 
   def print_failures(self):
-    self.out("{} failures were detected in the following tests:".format(len(self.failures_)))
+    self.out(
+        f"{len(self.failures_)} failures were detected in the following tests:")
     failures = sorted([test.unique_name for test in self.failures_])
     for test in failures:
       test_path = os.path.join(os.path.split(__file__)[0], test)

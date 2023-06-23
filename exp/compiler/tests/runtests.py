@@ -32,14 +32,14 @@ def run_tests(args):
             kind = 'pass'
 
         try:
-            argv = [os.path.abspath(args.spcomp), os.path.join(testdir, test + '.sp')]
+            argv = [os.path.abspath(args.spcomp), os.path.join(testdir, f'{test}.sp')]
             p = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             stdout, stderr = p.communicate()
             stdout = stdout.decode('utf-8')
             stderr = stderr.decode('utf-8')
 
             if test_type == 'runtime':
-                smx_path = test + '.smx'
+                smx_path = f'{test}.smx'
                 compiled = os.path.exists(smx_path)
                 if compiled:
                     os.unlink(smx_path)
@@ -47,17 +47,13 @@ def run_tests(args):
                 compiled = p.returncode == 0
 
             status = 'ok'
-            if compiled and kind == 'fail':
+            if compiled and kind == 'fail' or not compiled and kind != 'fail':
                 status = 'fail'
-            elif not compiled and kind != 'fail':
-                status = 'fail'
-
             fails = []
             if status == 'ok' and kind != 'pass':
                 lines = []
-                with open(os.path.join(testdir, test + '.txt')) as fp:
-                    for line in fp:
-                        lines.append(line.strip())
+                with open(os.path.join(testdir, f'{test}.txt')) as fp:
+                    lines.extend(line.strip() for line in fp)
                 for line in lines:
                     if line not in stderr:
                         fails += [
@@ -65,7 +61,7 @@ def run_tests(args):
                             line,
                         ]
                         break
-            
+
             if status == 'fail' or len(fails):
                 print('Test {0} ... FAIL, exit code {1}'.format(test, p.returncode))
                 failed = True
@@ -79,8 +75,6 @@ def run_tests(args):
 
         except Exception as exn:
             raise
-            sys.stderr.write('FAILED! {0}\n'.format(exn.message))
-
     if failed:
         sys.stderr.write('One or more tests failed!\n')
         sys.exit(1)

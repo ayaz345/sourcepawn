@@ -38,18 +38,14 @@ class CommentParser(object):
     self.doc = Comment()
 
   def peekChar(self):
-    if self.pos >= len(self.text):
-      return '\0'
-    return self.text[self.pos]
+    return '\0' if self.pos >= len(self.text) else self.text[self.pos]
   def getChar(self):
     if self.pos >= len(self.text):
       return '\0'
     self.pos += 1
     return self.text[self.pos - 1]
   def matchChar(self, c):
-    if self.peekChar() != c:
-      return False
-    return self.getChar()
+    return False if self.peekChar() != c else self.getChar()
 
   def parse(self):
     while self.pos < len(self.text):
@@ -92,7 +88,7 @@ class CommentParser(object):
     first_char = True
     while self.pos < len(self.text):
       c = self.getChar()
-      if c == '\r' or c == '\n':
+      if c in ['\r', '\n']:
         first_char = True
         continue
       if c.isspace() or not first_char:
@@ -128,7 +124,7 @@ class CommentParser(object):
     for index, line in enumerate(lines):
       if line.startswith('@'):
         tag_end = line.find(' ', 1)
-        if tag_end == -1 or tag_end == 1:
+        if tag_end in [-1, 1]:
           continue
 
         if index != 0:
@@ -141,7 +137,7 @@ class CommentParser(object):
         if block_tag == 'param':
           param_end = line.find(' ')
           if param_end != -1:
-            block_tag += ':' + line[:param_end]
+            block_tag += f':{line[:param_end]}'
             line = line[param_end+1:].strip()
           else:
             block_tag += ':unknown'
@@ -192,8 +188,8 @@ class DocGen(object):
 
   def parse_include(self, include):
     argv = [
-      self.config['parser'],
-      os.path.join(self.config['includes'], include + '.inc'),
+        self.config['parser'],
+        os.path.join(self.config['includes'], f'{include}.inc'),
     ]
     p = subprocess.Popen(
       args = argv,
@@ -508,10 +504,10 @@ class DocGen(object):
 
     for argument in function['arguments']:
       param = {
-        'name': argument['name'],
-        'type': argument['type'],
+          'name': argument['name'],
+          'type': argument['type'],
+          'doc': params.get('param:' + argument['name'], ''),
       }
-      param['doc'] = params.get('param:' + argument['name'], '')
       data['params'].append(param)
 
     signature = '{0} {1}({2})'.format(
@@ -524,11 +520,7 @@ class DocGen(object):
 
     json = JSON.dumps(data)
 
-    if self.current_class is not None:
-      parent_type = 'class'
-    else:
-      parent_type = None
-
+    parent_type = 'class' if self.current_class is not None else None
     old_id = self.find_old('spdoc_function', {
       'include_id': self.current_include,
       'parent_type': parent_type,
@@ -580,9 +572,7 @@ class DocGen(object):
     cn = self.db.cursor()
     cn.execute(query, values)
     row = cn.fetchone()
-    if row is None:
-      return None
-    return row[0]
+    return None if row is None else row[0]
 
 def main():
   ap = argparse.ArgumentParser()

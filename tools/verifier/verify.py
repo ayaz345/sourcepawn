@@ -18,7 +18,7 @@ def main():
     env = os.environ.copy()
     env['VERBOSE'] = '1'
   if args.validate_debug_sections:
-    if env == None:
+    if env is None:
       env = os.environ.copy()
     env['VALIDATE_DEBUG_SECTIONS'] = '1'
 
@@ -47,7 +47,7 @@ def main():
     verified_files += 1
 
     if p.returncode != 0:
-      print('failed to verify {}'.format(file))
+      print(f'failed to verify {file}')
       failed_files += 1
   print('Done. {}/{} plugins passed verification. {} ({:.02f}%) failed.'.format(verified_files-failed_files, verified_files, failed_files, failed_files/verified_files*100.0))
 

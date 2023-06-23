@@ -59,9 +59,7 @@ def exec_argv(argv, timeout = None, logger = None, env = None):
   return -9, '', 'process killed due to timeout'
 
 def parse_manifest(path, local_folder, source = {}):
-  manifest = {}
-  manifest['folder'] = source.get('folder', {}).copy()
-
+  manifest = {'folder': source.get('folder', {}).copy()}
   with open(path, 'r') as fp:
     cfg = configparser.ConfigParser()
     cfg.readfp(fp)

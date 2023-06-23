@@ -38,9 +38,7 @@ def process_file(path, args):
 def determine_nl_style(path):
   output = subprocess.check_output(['file', path])
   output = output.decode('utf-8')
-  if 'CRLF' in output:
-    return '\r\n'
-  return '\n'
+  return '\r\n' if 'CRLF' in output else '\n'
 
 Token = namedtuple('Token', ['pos', 'kind', 'text', 'line', 'col'])
 

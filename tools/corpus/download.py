@@ -67,7 +67,7 @@ def DownloadOrUpdate(args, repo_url, info):
                 subprocess.check_call(['git', 'checkout', info['branch']], cwd = output_path)
             subprocess.check_call(['git', 'pull'], cwd = output_path)
         except:
-            print('Could not update {}'.format(repo_url))
+            print(f'Could not update {repo_url}')
         return
 
     output_dir = os.path.dirname(output_path)
@@ -79,7 +79,7 @@ def DownloadOrUpdate(args, repo_url, info):
         if info['branch']:
             subprocess.check_call(['git', 'checkout', info['branch']], cwd = output_path)
     except:
-        print('Could not download {}'.format(repo_url))
+        print(f'Could not download {repo_url}')
 
 if __name__ == '__main__':
     main()
